@@ -151,21 +151,3 @@ const Index = () => {
 };
 
 export default Index;
-                  key={match.id}
-                  match={match}
-                  userPrediction={userPredictions[match.id]}
-                  onPredict={handlePrediction}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'leaderboard' && <Leaderboard />}
-        {activeTab === 'stats' && <UserStats />}
-      </div>
-    </div>
-  );
-};
-
-export default Index;
