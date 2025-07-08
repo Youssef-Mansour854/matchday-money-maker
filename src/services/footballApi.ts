@@ -1,7 +1,7 @@
 import { Match, League } from '@/types/match';
 
 // Using Supabase Edge Function as proxy to Football-Data.org API
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
 const PROXY_URL = `${SUPABASE_URL}/functions/v1/football-proxy`;
 
 // League ID mappings for Football-Data.org
