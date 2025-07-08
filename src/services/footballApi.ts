@@ -128,23 +128,28 @@ export const footballApi = {
       let endpoint = '/matches';
       const params: any = {
         status: 'SCHEDULED,TIMED',
-        dateFrom: new Date().toISOString().split('T')[0],
-        dateTo: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Next 7 days
+        dateFrom: date || new Date().toISOString().split('T')[0],
+        dateTo: date || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Next 14 days
       };
 
       if (leagueId) {
         endpoint = `/competitions/${leagueId}/matches`;
       }
 
-      if (date) {
-        params.dateFrom = date;
-        params.dateTo = date;
-      }
 
       const data = await makeProxyRequest(endpoint, params);
       
       if (data && data.matches) {
-        return data.matches.map(transformMatch);
+        // Filter and sort matches to get the most relevant upcoming fixtures
+        const upcomingMatches = data.matches
+          .map(transformMatch)
+          .filter((match: Match) => new Date(match.fixture.date) > new Date())
+          .sort((a: Match, b: Match) => 
+            new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime()
+          )
+          .slice(0, 20); // Limit to 20 most upcoming matches
+        
+        return upcomingMatches;
       }
       
       return [];
