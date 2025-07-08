@@ -1,326 +1,366 @@
-import axios from 'axios';
 import { Match, League } from '@/types/match';
 
-// Using API-Football (RapidAPI) - Free tier available
-const API_KEY = 'your-api-key-here'; // Replace with actual API key
-const BASE_URL = 'https://api-football-v1.p.rapidapi.com/v3';
+// Using Supabase Edge Function as proxy to Football-Data.org API
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
+const PROXY_URL = `${SUPABASE_URL}/functions/v1/football-proxy`;
 
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'X-RapidAPI-Key': API_KEY,
-    'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com'
-  }
-});
+// League ID mappings for Football-Data.org
+const LEAGUE_MAPPINGS = {
+  'PL': { id: 2021, name: 'Premier League', country: 'England' },
+  'PD': { id: 2014, name: 'La Liga', country: 'Spain' },
+  'BL1': { id: 2002, name: 'Bundesliga', country: 'Germany' },
+  'SA': { id: 2019, name: 'Serie A', country: 'Italy' },
+  'FL1': { id: 2015, name: 'Ligue 1', country: 'France' },
+  'CL': { id: 2001, name: 'Champions League', country: 'Europe' }
+};
 
-// Mock data for development (replace with real API calls)
-const mockMatches: Match[] = [
-  {
-    id: 1,
-    homeTeam: {
-      id: 33,
-      name: 'Manchester United',
-      logo: 'https://media.api-sports.io/football/teams/33.png',
-      country: 'England'
-    },
-    awayTeam: {
-      id: 40,
-      name: 'Liverpool',
-      logo: 'https://media.api-sports.io/football/teams/40.png',
-      country: 'England'
-    },
-    fixture: {
-      date: '2025-01-15T15:00:00Z',
-      timestamp: 1737298800,
-      timezone: 'UTC',
-      venue: {
-        id: 556,
-        name: 'Old Trafford',
-        city: 'Manchester'
-      }
-    },
-    league: {
-      id: 39,
-      name: 'Premier League',
-      country: 'England',
-      logo: 'https://media.api-sports.io/football/leagues/39.png',
-      season: 2024
-    },
-    status: {
-      long: 'Not Started',
-      short: 'NS',
-      elapsed: null
-    }
-  },
-  {
-    id: 2,
-    homeTeam: {
-      id: 529,
-      name: 'Barcelona',
-      logo: 'https://media.api-sports.io/football/teams/529.png',
-      country: 'Spain'
-    },
-    awayTeam: {
-      id: 541,
-      name: 'Real Madrid',
-      logo: 'https://media.api-sports.io/football/teams/541.png',
-      country: 'Spain'
-    },
-    fixture: {
-      date: '2025-01-16T20:00:00Z',
-      timestamp: 1737403200,
-      timezone: 'UTC',
-      venue: {
-        id: 1456,
-        name: 'Camp Nou',
-        city: 'Barcelona'
-      }
-    },
-    league: {
-      id: 140,
-      name: 'La Liga',
-      country: 'Spain',
-      logo: 'https://media.api-sports.io/football/leagues/140.png',
-      season: 2024
-    },
-    status: {
-      long: 'Not Started',
-      short: 'NS',
-      elapsed: null
-    }
-  },
-  {
-    id: 3,
-    homeTeam: {
-      id: 157,
-      name: 'Bayern Munich',
-      logo: 'https://media.api-sports.io/football/teams/157.png',
-      country: 'Germany'
-    },
-    awayTeam: {
-      id: 165,
-      name: 'Borussia Dortmund',
-      logo: 'https://media.api-sports.io/football/teams/165.png',
-      country: 'Germany'
-    },
-    fixture: {
-      date: '2025-01-17T18:30:00Z',
-      timestamp: 1737484200,
-      timezone: 'UTC',
-      venue: {
-        id: 700,
-        name: 'Allianz Arena',
-        city: 'Munich'
-      }
-    },
-    league: {
-      id: 78,
-      name: 'Bundesliga',
-      country: 'Germany',
-      logo: 'https://media.api-sports.io/football/leagues/78.png',
-      season: 2024
-    },
-    status: {
-      long: 'Not Started',
-      short: 'NS',
-      elapsed: null
-    }
-  },
-  {
-    id: 4,
-    homeTeam: {
-      id: 496,
-      name: 'Juventus',
-      logo: 'https://media.api-sports.io/football/teams/496.png',
-      country: 'Italy'
-    },
-    awayTeam: {
-      id: 489,
-      name: 'AC Milan',
-      logo: 'https://media.api-sports.io/football/teams/489.png',
-      country: 'Italy'
-    },
-    fixture: {
-      date: '2025-01-18T19:45:00Z',
-      timestamp: 1737575100,
-      timezone: 'UTC',
-      venue: {
-        id: 1662,
-        name: 'Allianz Stadium',
-        city: 'Turin'
-      }
-    },
-    league: {
-      id: 135,
-      name: 'Serie A',
-      country: 'Italy',
-      logo: 'https://media.api-sports.io/football/leagues/135.png',
-      season: 2024
-    },
-    status: {
-      long: 'Not Started',
-      short: 'NS',
-      elapsed: null
-    }
-  },
-  {
-    id: 5,
-    homeTeam: {
-      id: 85,
-      name: 'Paris Saint Germain',
-      logo: 'https://media.api-sports.io/football/teams/85.png',
-      country: 'France'
-    },
-    awayTeam: {
-      id: 79,
-      name: 'Lille',
-      logo: 'https://media.api-sports.io/football/teams/79.png',
-      country: 'France'
-    },
-    fixture: {
-      date: '2025-01-19T20:00:00Z',
-      timestamp: 1737662400,
-      timezone: 'UTC',
-      venue: {
-        id: 671,
-        name: 'Parc des Princes',
-        city: 'Paris'
-      }
-    },
-    league: {
-      id: 61,
-      name: 'Ligue 1',
-      country: 'France',
-      logo: 'https://media.api-sports.io/football/leagues/61.png',
-      season: 2024
-    },
-    status: {
-      long: 'Not Started',
-      short: 'NS',
-      elapsed: null
-    }
+// Helper function to make API requests through the proxy
+const makeProxyRequest = async (endpoint: string, params?: Record<string, any>) => {
+  const url = new URL(PROXY_URL);
+  url.searchParams.set('endpoint', endpoint);
+  
+  if (params) {
+    url.searchParams.set('params', JSON.stringify(params));
   }
-];
 
-const mockLeagues: League[] = [
-  {
-    id: 39,
-    name: 'Premier League',
-    country: 'England',
-    logo: 'https://media.api-sports.io/football/leagues/39.png',
-    season: 2024
-  },
-  {
-    id: 140,
-    name: 'La Liga',
-    country: 'Spain',
-    logo: 'https://media.api-sports.io/football/leagues/140.png',
-    season: 2024
-  },
-  {
-    id: 78,
-    name: 'Bundesliga',
-    country: 'Germany',
-    logo: 'https://media.api-sports.io/football/leagues/78.png',
-    season: 2024
-  },
-  {
-    id: 135,
-    name: 'Serie A',
-    country: 'Italy',
-    logo: 'https://media.api-sports.io/football/leagues/135.png',
-    season: 2024
-  },
-  {
-    id: 61,
-    name: 'Ligue 1',
-    country: 'France',
-    logo: 'https://media.api-sports.io/football/leagues/61.png',
-    season: 2024
+  const response = await fetch(url.toString());
+  
+  if (!response.ok) {
+    throw new Error(`Proxy request failed: ${response.status}`);
   }
-];
+  
+  return response.json();
+};
+
+// Transform Football-Data.org response to our Match interface
+const transformMatch = (match: any): Match => {
+  return {
+    id: match.id,
+    homeTeam: {
+      id: match.homeTeam.id,
+      name: match.homeTeam.name,
+      logo: match.homeTeam.crest || `https://via.placeholder.com/64x64/10b981/ffffff?text=${match.homeTeam.name.charAt(0)}`,
+      country: match.competition.area?.name || 'Unknown'
+    },
+    awayTeam: {
+      id: match.awayTeam.id,
+      name: match.awayTeam.name,
+      logo: match.awayTeam.crest || `https://via.placeholder.com/64x64/10b981/ffffff?text=${match.awayTeam.name.charAt(0)}`,
+      country: match.competition.area?.name || 'Unknown'
+    },
+    fixture: {
+      date: match.utcDate,
+      timestamp: new Date(match.utcDate).getTime() / 1000,
+      timezone: 'UTC',
+      venue: {
+        id: 1,
+        name: 'Stadium',
+        city: match.homeTeam.name
+      }
+    },
+    league: {
+      id: match.competition.id,
+      name: match.competition.name,
+      country: match.competition.area?.name || 'Unknown',
+      logo: match.competition.emblem || `https://via.placeholder.com/64x64/10b981/ffffff?text=${match.competition.name.charAt(0)}`,
+      season: new Date(match.season.startDate).getFullYear()
+    },
+    status: {
+      long: getStatusLong(match.status),
+      short: getStatusShort(match.status),
+      elapsed: match.minute || null
+    },
+    score: match.score?.fullTime ? {
+      halftime: {
+        home: match.score.halfTime?.home || null,
+        away: match.score.halfTime?.away || null
+      },
+      fulltime: {
+        home: match.score.fullTime.home,
+        away: match.score.fullTime.away
+      }
+    } : undefined
+  };
+};
+
+// Transform status from Football-Data.org to our format
+const getStatusLong = (status: string): string => {
+  switch (status) {
+    case 'SCHEDULED': return 'Not Started';
+    case 'TIMED': return 'Not Started';
+    case 'IN_PLAY': return 'In Play';
+    case 'PAUSED': return 'Halftime';
+    case 'FINISHED': return 'Match Finished';
+    case 'POSTPONED': return 'Postponed';
+    case 'CANCELLED': return 'Cancelled';
+    default: return status;
+  }
+};
+
+const getStatusShort = (status: string): string => {
+  switch (status) {
+    case 'SCHEDULED': return 'NS';
+    case 'TIMED': return 'NS';
+    case 'IN_PLAY': return 'LIVE';
+    case 'PAUSED': return 'HT';
+    case 'FINISHED': return 'FT';
+    case 'POSTPONED': return 'PP';
+    case 'CANCELLED': return 'CANC';
+    default: return 'NS';
+  }
+};
+
+// Transform league data
+const transformLeague = (competition: any): League => {
+  return {
+    id: competition.id,
+    name: competition.name,
+    country: competition.area?.name || 'Unknown',
+    logo: competition.emblem || `https://via.placeholder.com/64x64/10b981/ffffff?text=${competition.name.charAt(0)}`,
+    season: new Date().getFullYear()
+  };
+};
 
 export const footballApi = {
   // Get upcoming fixtures
   async getFixtures(leagueId?: number, date?: string): Promise<Match[]> {
     try {
-      // For development, return mock data
+      let endpoint = '/matches';
+      const params: any = {
+        status: 'SCHEDULED,TIMED',
+        dateFrom: date || new Date().toISOString().split('T')[0],
+        dateTo: date || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Next 14 days
+      };
+
       if (leagueId) {
-        return mockMatches.filter(match => match.league.id === leagueId);
+        endpoint = `/competitions/${leagueId}/matches`;
       }
-      return mockMatches;
+
+
+      const data = await makeProxyRequest(endpoint, params);
       
-      // Real API call (uncomment when you have API key)
-      /*
-      const response = await api.get('/fixtures', {
-        params: {
-          league: leagueId,
-          date: date,
-          status: 'NS', // Not Started
-          timezone: 'UTC'
-        }
-      });
-      return response.data.response;
-      */
+      if (data && data.matches) {
+        // Filter and sort matches to get the most relevant upcoming fixtures
+        const upcomingMatches = data.matches
+          .map(transformMatch)
+          .filter((match: Match) => new Date(match.fixture.date) > new Date())
+          .sort((a: Match, b: Match) => 
+            new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime()
+          )
+          .slice(0, 20); // Limit to 20 most upcoming matches
+        
+        return upcomingMatches;
+      }
+      
+      return [];
     } catch (error) {
       console.error('Error fetching fixtures:', error);
-      return mockMatches;
+      
+      // Fallback to mock data if API fails
+      return getMockMatches(leagueId);
     }
   },
 
-  // Get leagues
+  // Get leagues/competitions
   async getLeagues(): Promise<League[]> {
     try {
-      return mockLeagues;
-      
-      // Real API call (uncomment when you have API key)
-      /*
-      const response = await api.get('/leagues', {
-        params: {
-          current: true
-        }
+      const data = await makeProxyRequest('/competitions', {
+        plan: 'TIER_ONE' // Free tier competitions
       });
-      return response.data.response.map((item: any) => item.league);
-      */
+      
+      if (data && data.competitions) {
+        // Filter to major European leagues
+        const majorLeagues = data.competitions.filter((comp: any) => 
+          ['PL', 'PD', 'BL1', 'SA', 'FL1', 'CL'].includes(comp.code)
+        );
+        
+        return majorLeagues.map(transformLeague);
+      }
+      
+      return [];
     } catch (error) {
       console.error('Error fetching leagues:', error);
-      return mockLeagues;
+      
+      // Fallback to mock data
+      return getMockLeagues();
     }
   },
 
   // Get match results
   async getMatchResult(matchId: number): Promise<Match | null> {
     try {
-      // For development, return mock result
-      const match = mockMatches.find(m => m.id === matchId);
-      if (match) {
-        return {
-          ...match,
-          status: {
-            long: 'Match Finished',
-            short: 'FT',
-            elapsed: 90
-          },
-          score: {
-            halftime: { home: 1, away: 0 },
-            fulltime: { home: 2, away: 1 }
-          }
-        };
-      }
-      return null;
+      const data = await makeProxyRequest(`/matches/${matchId}`);
       
-      // Real API call (uncomment when you have API key)
-      /*
-      const response = await api.get('/fixtures', {
-        params: {
-          id: matchId
-        }
-      });
-      return response.data.response[0];
-      */
+      if (data && data.match) {
+        return transformMatch(data.match);
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error fetching match result:', error);
       return null;
     }
   }
+};
+
+// Mock data fallback functions
+const getMockMatches = (leagueId?: number): Match[] => {
+  const mockMatches: Match[] = [
+    {
+      id: 1,
+      homeTeam: {
+        id: 33,
+        name: 'Manchester United',
+        logo: 'https://crests.football-data.org/66.png',
+        country: 'England'
+      },
+      awayTeam: {
+        id: 40,
+        name: 'Liverpool',
+        logo: 'https://crests.football-data.org/64.png',
+        country: 'England'
+      },
+      fixture: {
+        date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        timestamp: Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 1000),
+        timezone: 'UTC',
+        venue: {
+          id: 556,
+          name: 'Old Trafford',
+          city: 'Manchester'
+        }
+      },
+      league: {
+        id: 2021,
+        name: 'Premier League',
+        country: 'England',
+        logo: 'https://crests.football-data.org/PL.png',
+        season: 2024
+      },
+      status: {
+        long: 'Not Started',
+        short: 'NS',
+        elapsed: null
+      }
+    },
+    {
+      id: 2,
+      homeTeam: {
+        id: 529,
+        name: 'Barcelona',
+        logo: 'https://crests.football-data.org/81.png',
+        country: 'Spain'
+      },
+      awayTeam: {
+        id: 541,
+        name: 'Real Madrid',
+        logo: 'https://crests.football-data.org/86.png',
+        country: 'Spain'
+      },
+      fixture: {
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        timestamp: Math.floor((Date.now() + 2 * 24 * 60 * 60 * 1000) / 1000),
+        timezone: 'UTC',
+        venue: {
+          id: 1456,
+          name: 'Camp Nou',
+          city: 'Barcelona'
+        }
+      },
+      league: {
+        id: 2014,
+        name: 'La Liga',
+        country: 'Spain',
+        logo: 'https://crests.football-data.org/PD.png',
+        season: 2024
+      },
+      status: {
+        long: 'Not Started',
+        short: 'NS',
+        elapsed: null
+      }
+    },
+    {
+      id: 3,
+      homeTeam: {
+        id: 157,
+        name: 'Bayern Munich',
+        logo: 'https://crests.football-data.org/5.png',
+        country: 'Germany'
+      },
+      awayTeam: {
+        id: 165,
+        name: 'Borussia Dortmund',
+        logo: 'https://crests.football-data.org/4.png',
+        country: 'Germany'
+      },
+      fixture: {
+        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        timestamp: Math.floor((Date.now() + 3 * 24 * 60 * 60 * 1000) / 1000),
+        timezone: 'UTC',
+        venue: {
+          id: 700,
+          name: 'Allianz Arena',
+          city: 'Munich'
+        }
+      },
+      league: {
+        id: 2002,
+        name: 'Bundesliga',
+        country: 'Germany',
+        logo: 'https://crests.football-data.org/BL1.png',
+        season: 2024
+      },
+      status: {
+        long: 'Not Started',
+        short: 'NS',
+        elapsed: null
+      }
+    }
+  ];
+
+  if (leagueId) {
+    return mockMatches.filter(match => match.league.id === leagueId);
+  }
+  return mockMatches;
+};
+
+const getMockLeagues = (): League[] => {
+  return [
+    {
+      id: 2021,
+      name: 'Premier League',
+      country: 'England',
+      logo: 'https://crests.football-data.org/PL.png',
+      season: 2024
+    },
+    {
+      id: 2014,
+      name: 'La Liga',
+      country: 'Spain',
+      logo: 'https://crests.football-data.org/PD.png',
+      season: 2024
+    },
+    {
+      id: 2002,
+      name: 'Bundesliga',
+      country: 'Germany',
+      logo: 'https://crests.football-data.org/BL1.png',
+      season: 2024
+    },
+    {
+      id: 2019,
+      name: 'Serie A',
+      country: 'Italy',
+      logo: 'https://crests.football-data.org/SA.png',
+      season: 2024
+    },
+    {
+      id: 2015,
+      name: 'Ligue 1',
+      country: 'France',
+      logo: 'https://crests.football-data.org/FL1.png',
+      season: 2024
+    }
+  ];
 };
