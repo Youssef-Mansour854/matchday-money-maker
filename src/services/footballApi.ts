@@ -1,16 +1,8 @@
-import axios from 'axios';
 import { Match, League } from '@/types/match';
 
-// Using Football-Data.org API
-const API_KEY = '6537cc414b9f4a2984021d64f52eda56';
-const BASE_URL = 'https://api.football-data.org/v4';
-
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'X-Auth-Token': API_KEY
-  }
-});
+// Using Supabase Edge Function as proxy to Football-Data.org API
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const PROXY_URL = `${SUPABASE_URL}/functions/v1/football-proxy`;
 
 // League ID mappings for Football-Data.org
 const LEAGUE_MAPPINGS = {
@@ -20,6 +12,24 @@ const LEAGUE_MAPPINGS = {
   'SA': { id: 2019, name: 'Serie A', country: 'Italy' },
   'FL1': { id: 2015, name: 'Ligue 1', country: 'France' },
   'CL': { id: 2001, name: 'Champions League', country: 'Europe' }
+};
+
+// Helper function to make API requests through the proxy
+const makeProxyRequest = async (endpoint: string, params?: Record<string, any>) => {
+  const url = new URL(PROXY_URL);
+  url.searchParams.set('endpoint', endpoint);
+  
+  if (params) {
+    url.searchParams.set('params', JSON.stringify(params));
+  }
+
+  const response = await fetch(url.toString());
+  
+  if (!response.ok) {
+    throw new Error(`Proxy request failed: ${response.status}`);
+  }
+  
+  return response.json();
 };
 
 // Transform Football-Data.org response to our Match interface
@@ -115,7 +125,7 @@ export const footballApi = {
   // Get upcoming fixtures
   async getFixtures(leagueId?: number, date?: string): Promise<Match[]> {
     try {
-      let url = '/matches';
+      let endpoint = '/matches';
       const params: any = {
         status: 'SCHEDULED,TIMED',
         dateFrom: new Date().toISOString().split('T')[0],
@@ -123,7 +133,7 @@ export const footballApi = {
       };
 
       if (leagueId) {
-        url = `/competitions/${leagueId}/matches`;
+        endpoint = `/competitions/${leagueId}/matches`;
       }
 
       if (date) {
@@ -131,10 +141,10 @@ export const footballApi = {
         params.dateTo = date;
       }
 
-      const response = await api.get(url, { params });
+      const data = await makeProxyRequest(endpoint, params);
       
-      if (response.data && response.data.matches) {
-        return response.data.matches.map(transformMatch);
+      if (data && data.matches) {
+        return data.matches.map(transformMatch);
       }
       
       return [];
@@ -149,15 +159,13 @@ export const footballApi = {
   // Get leagues/competitions
   async getLeagues(): Promise<League[]> {
     try {
-      const response = await api.get('/competitions', {
-        params: {
-          plan: 'TIER_ONE' // Free tier competitions
-        }
+      const data = await makeProxyRequest('/competitions', {
+        plan: 'TIER_ONE' // Free tier competitions
       });
       
-      if (response.data && response.data.competitions) {
+      if (data && data.competitions) {
         // Filter to major European leagues
-        const majorLeagues = response.data.competitions.filter((comp: any) => 
+        const majorLeagues = data.competitions.filter((comp: any) => 
           ['PL', 'PD', 'BL1', 'SA', 'FL1', 'CL'].includes(comp.code)
         );
         
@@ -176,10 +184,10 @@ export const footballApi = {
   // Get match results
   async getMatchResult(matchId: number): Promise<Match | null> {
     try {
-      const response = await api.get(`/matches/${matchId}`);
+      const data = await makeProxyRequest(`/matches/${matchId}`);
       
-      if (response.data && response.data.match) {
-        return transformMatch(response.data.match);
+      if (data && data.match) {
+        return transformMatch(data.match);
       }
       
       return null;
